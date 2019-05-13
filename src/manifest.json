@@ -1,0 +1,74 @@
+{
+  "name": "Youtube PiP Controller",
+  "description": "Easier to control your Youtube player when in Picture in Picture mode",
+  "version": "1.0",
+  "icons": {
+    "128": "icons/icon_128.png"
+  },
+  "background": {
+    "persistent": false,
+    "scripts": ["background.js"]
+  },
+  "browser_action": {
+    "default_icon": {
+      "19": "icons/icon_19.png",
+      "38": "icons/icon_38.png"
+    }
+  },
+  "commands": {
+    "toggle-play-pause": {
+      "suggested_key": {
+        "windows": "MediaPlayPause",
+        "mac": "MediaPlayPause",
+        "chromeos": "MediaPlayPause",
+        "linux": "MediaPlayPause"
+      },
+      "description": "Video: Play/pause"
+    },
+    "next": {
+      "suggested_key": {
+        "windows": "MediaNextTrack",
+        "mac": "MediaNextTrack",
+        "chromeos": "MediaNextTrack",
+        "linux": "MediaNextTrack"
+      },
+      "description": "Playlist: Next"
+    },
+    "prev": {
+      "suggested_key": {
+        "windows": "MediaPrevTrack",
+        "mac": "MediaPrevTrack",
+        "chromeos": "MediaPrevTrack",
+        "linux": "MediaPrevTrack"
+      },
+      "description": "Playlist: Previous"
+    },
+    "toggle-pip": {
+      "suggested_key": {
+        "windows": "Ctrl+Shift+P",
+        "mac": "MacCtrl+Shift+P",
+        "chromeos": "Ctrl+Shift+P",
+        "linux": "Ctrl+Shift+P"
+      },
+      "description": "Video: PiP"
+    },
+    "fast-forward": {
+      "description": "Video: Fast forward"
+    },
+    "backward": {
+      "description": "Video: Backward"
+    },
+    "increase-speed": {
+      "description": "Playback speed increase"
+    },
+    "decrease-speed": {
+      "description": "Playback speed decrease"
+    }
+  },
+  "permissions": [
+    "https://*.youtube.com/*",
+    "tabs"
+  ],
+  "minimum_chrome_version": "69.0.3483.0",
+  "manifest_version": 2
+}
