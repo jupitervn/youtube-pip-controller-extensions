@@ -91,7 +91,7 @@ async function getTargetYTBFrameForPiP() {
         if (isYoutubeTab(activeTab)) {
           return new YTBFrame(0, activeTab);
         }
-        //TODO: Show embed UI
+        //TODO: Show UI
       }
       throw NO_PLAYING_YTB_FRAME;
     })
@@ -182,7 +182,7 @@ function prevSong() {
  * Get first youtube's iframe in other pages that contains PiP element
  */
 async function getActivePiPFrame() {
-  return queryTabs({})
+  return queryTabs()
     .then(async tabs => {
       const ytbFrames = tabs
           .filter(tab => isYoutubeTab(tab))
@@ -190,8 +190,9 @@ async function getActivePiPFrame() {
       const activePiP = await findFirstPiPFrame(ytbFrames);
       console.log("Find youtube tab with PiP element", activePiP);
       if (activePiP) {
-        return Promise.resolve(activePiP);
+        return activePiP;
       }
+
       const otherTabs = tabs.filter(tab => !isYoutubeTab(tab));
       for (tab of otherTabs) {
         const ytbFrames = await getYTBFramesInTab(tab);
@@ -199,7 +200,7 @@ async function getActivePiPFrame() {
           const framePiP = await findFirstPiPFrame(ytbFrames);
           console.log("Got Youtube IFrame", framePiP);
           if (framePiP) {
-            return Promise.resolve(framePiP);
+            return framePiP;
           }
         }
       }
@@ -260,7 +261,7 @@ async function getAudibleYTBFrame() {
   return Promise.resolve(null);
 }
 
-function getProperTab() {
+async function getProperTab() {
   return getActivePiPFrame()
     .then(pipFrame => pipFrame)
     .catch(err => {
@@ -288,6 +289,9 @@ function enablePip(ytbFrame) {
 
 function queryTabs(details) {
   return new Promise(function(resolve, reject) {
+    if (details == null) {
+      details = {};
+    }
     chrome.tabs.query(details, tabs => {
       console.log("Query Tabs", tabs);
       resolve(tabs);
