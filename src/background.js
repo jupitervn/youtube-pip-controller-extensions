@@ -20,22 +20,22 @@ chrome.commands.onCommand.addListener(async function(command) {
       await togglePip();
       break;
     case 'backward':
-      backward();
+      await backward();
       break;
     case 'fast-forward':
-      fastForward();
+      await fastForward();
       break;
     case 'increase-speed':
-      increasePlaybackRate();
+      await increasePlaybackRate();
       break;
     case 'decrease-speed':
-      decreasePlaybackRate();
+      await decreasePlaybackRate();
       break;
     case 'next':
-      nextSong();
+      await nextSong();
       break;
     case 'prev':
-      prevSong();
+      await prevSong();
       break;
   }
 });
@@ -48,7 +48,7 @@ chrome.commands.onCommand.addListener(async function(command) {
  *    Find current active tab => toggle 
  */
 async function togglePlayPause() {
-  return getProperTab()
+  return getActiveFrameForControlling()
     .then(result => {
       if (result) {
         return executeScript(result.tab, {file: "toggle_play_pause_video.js", allFrames: false, frameId: result.frameId});
@@ -69,14 +69,11 @@ async function togglePlayPause() {
  * }
  */
 async function togglePip() {
-  return getActivePiPFrame()
+  return getPiPHostFrame()
     .then(result => executeScript(result.tab, {code: "document.exitPictureInPicture()", allFrames: false, frameId: result.frameId}))
-    .catch(err => {
-      if (err != NO_ACTIVE_PIP_FRAME) {
-        throw err;
-      }
-      return getTargetYTBFrameForPiP()
-        .then(frame => enablePip(frame));
+    .catch(async _ => {
+      const frame = await getTargetYTBFrameForPiP();
+      return await enablePip(frame);
     })
     .catch(err => {
       console.log("Err finding frame to toggle PiP", err);
@@ -95,10 +92,7 @@ async function getTargetYTBFrameForPiP() {
       }
       throw NO_PLAYING_YTB_FRAME;
     })
-    .catch(async err => {
-      if (err != NO_PLAYING_YTB_FRAME) {
-        throw err;
-      }
+    .catch(async _ => {
       const audibleFrame = await getAudibleYTBFrame();
       if (audibleFrame) {
         return audibleFrame;
@@ -108,20 +102,20 @@ async function getTargetYTBFrameForPiP() {
 }
 
 //https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/playbackRate
-function increasePlaybackRate() {
-  getActivePiPFrame()
-  .then(async result => {
-    console.log("Increase playback rate", result);
-    if (result.pipTab) {
-      const scriptResult = await executeScript(result.tab, {file: "increase_speed.js", allFrames: false, frameId: frameId});
-      console.log("Try to increase speed PiP", scriptResult);
-      return;
-    }
-  });
+async function increasePlaybackRate() {
+  return getPiPHostFrame()
+    .then(async result => {
+      console.log("Increase playback rate", result);
+      if (result.pipTab) {
+        const scriptResult = await executeScript(result.tab, {file: "increase_speed.js", allFrames: false, frameId: frameId});
+        console.log("Try to increase speed PiP", scriptResult);
+        return;
+      }
+    });
 }
 
-function decreasePlaybackRate() {
-  getActivePiPFrame()
+async function decreasePlaybackRate() {
+  return getPiPHostFrame()
   .then(async result => {
     console.log("Decrease playback rate", result);
     if (result.pipTab) {
@@ -132,8 +126,8 @@ function decreasePlaybackRate() {
   });
 }
 
-function fastForward() {
-  getActivePiPFrame()
+async function fastForward() {
+  return getPiPHostFrame()
     .then(async result => {
       console.log("FF", result);
       if (result.pipTab) {
@@ -144,36 +138,33 @@ function fastForward() {
     });
 }
 
-function backward() {
-  getActivePiPFrame()
-  .then(async result => {
-    console.log("BW", result);
-    if (result.pipTab) {
-      const scriptResult = await executeScript(result.pipTab, {file: "backward.js", allFrames: false});
-      console.log("Try to backward PiP", scriptResult);
-      return;
-    }
-  });
+async function backward() {
+  return getPiPHostFrame()
+    .then(async result => {
+      console.log("BW", result);
+      if (result.pipTab) {
+        const scriptResult = await executeScript(result.pipTab, {file: "backward.js", allFrames: false});
+        console.log("Try to backward PiP", scriptResult);
+        return;
+      }
+    });
 }
-/**
- * - Use current PiP
- * - Use current audible tab
- * - Use current active tab
- */
-function nextSong() {
-  getProperTab()
+
+
+async function nextSong() {
+  return getActiveFrameForControlling()
     .then(async tab => {
       console.log("Next song", tab);
       await executeScript(tab, {file: "next_song.js", allFrames: false});
     });
 }
 
-function prevSong() {
-  getProperTab()
-  .then(async tab => {
-    console.log("Prev song", tab);
-    await executeScript(tab, {file: "prev_song.js", allFrames: false});
-  });
+async function prevSong() {
+  return getActiveFrameForControlling()
+    .then(async tab => {
+      console.log("Prev song", tab);
+      await executeScript(tab, {file: "prev_song.js", allFrames: false});
+    });
 }
 
 /**
@@ -181,14 +172,13 @@ function prevSong() {
  * OR
  * Get first youtube's iframe in other pages that contains PiP element
  */
-async function getActivePiPFrame() {
+async function getPiPHostFrame() {
   return queryTabs()
     .then(async tabs => {
       const ytbFrames = tabs
           .filter(tab => isYoutubeTab(tab))
           .map(tab => new YTBFrame(0, tab));
-      const activePiP = await findFirstPiPFrame(ytbFrames);
-      console.log("Find youtube tab with PiP element", activePiP);
+      const activePiP = await getPiPFrame(ytbFrames);
       if (activePiP) {
         return activePiP;
       }
@@ -197,8 +187,7 @@ async function getActivePiPFrame() {
       for (tab of otherTabs) {
         const ytbFrames = await getYTBFramesInTab(tab);
         if (ytbFrames && ytbFrames.length > 0) {
-          const framePiP = await findFirstPiPFrame(ytbFrames);
-          console.log("Got Youtube IFrame", framePiP);
+          const framePiP = await getPiPFrame(ytbFrames);
           if (framePiP) {
             return framePiP;
           }
@@ -208,7 +197,7 @@ async function getActivePiPFrame() {
     });
 }
 
-function getYTBFramesInTab(tab) {
+async function getYTBFramesInTab(tab) {
   return new Promise(function (resolve, reject) {
     chrome.webNavigation.getAllFrames({tabId: tab.id}, iFrames => {
       const ytbIFrames = iFrames
@@ -219,7 +208,7 @@ function getYTBFramesInTab(tab) {
   });
 }
 
-async function findFirstPiPFrame(ytbFrames) {
+async function getPiPFrame(ytbFrames) {
   for (ytbFrame of ytbFrames) {
     const pipCheckResult = await executeScript(ytbFrame.tab, {code: "document.pictureInPictureElement", allFrames: false, frameId: ytbFrame.frameId});
     if (pipCheckResult && pipCheckResult[0]) {
@@ -229,20 +218,18 @@ async function findFirstPiPFrame(ytbFrames) {
   return null;
 }
 
+/**
+ * Get first playing youtube player frame inside all audible tabs.
+ */
 async function getAudibleYTBFrame() {
-  const audibleTabs = await queryTabs({audible: true, lastFocusedWindow: true})
-        .then(tabs => {
-          if (tabs.length == 0) {
-            return queryTabs({audible: true});
-          } else {
-            return Promise.resolve(tabs);
-          }
-        });
+  var audibleTabs = await queryTabs({audible: true, lastFocusedWindow: true});
+  if (!audibleTabs || audibleTabs.length == 0) {
+    audibleTabs = await queryTabs({audible: true});
+  }
 
-  console.log("Checking audible tabs", audibleTabs);
   for (audibleTab of audibleTabs) {
     if (isYoutubeTab(audibleTab)) {
-      return enablePip(new YTBFrame(0, audibleTab));
+      return Promise.resolve(new YTBFrame(0, audibleTab));
     }
     const playingFrame = await getYTBFramesInTab(audibleTab)
       .then(async frames => {
@@ -261,9 +248,14 @@ async function getAudibleYTBFrame() {
   return Promise.resolve(null);
 }
 
-async function getProperTab() {
-  return getActivePiPFrame()
-    .then(pipFrame => pipFrame)
+/**
+ * First get the active PiP
+ * If no active PiP,
+ * - Check active tab to find a playing player
+ * - No active tab, use audible tab: 
+ */
+async function getActiveFrameForControlling() {
+  return getPiPHostFrame()
     .catch(err => {
       if (err != NO_ACTIVE_PIP_FRAME) {
         throw err
@@ -283,8 +275,8 @@ async function getProperTab() {
     });
 }
 
-function enablePip(ytbFrame) {
-  executeScript(ytbFrame.tab, { file: 'active_pip.js', allFrames: false, frameId: ytbFrame.frameId });
+async function enablePip(ytbFrame) {
+  return executeScript(ytbFrame.tab, { file: 'active_pip.js', allFrames: true, frameId: ytbFrame.frameId });
 }
 
 function queryTabs(details) {
