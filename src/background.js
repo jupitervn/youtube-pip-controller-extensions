@@ -68,28 +68,30 @@ async function togglePlayPause() {
  *    - What if an audible tab has multiple playing YTB Player=> pick the first one
  * }
  */
+var lastExitedPiPFrame = null;
 async function togglePip() {
   return getPiPHostFrame()
-    .then(result => executeScript(result.tab, {code: "document.exitPictureInPicture()", allFrames: false, frameId: result.frameId}))
-    .catch(async _ => {
-      const frame = await getTargetYTBFrameForPiP();
-      return await enablePip(frame);
+    .then(frame => {
+      lastExitedPiPFrame = frame;
+      return executeScript(frame.tab, {code: "document.exitPictureInPicture()", allFrames: false, frameId: frame.frameId});
     })
+    .catch(async _ => getTargetYTBFrameForPiP().then(enablePip))
     .catch(err => {
+      if (lastExitedPiPFrame) {
+        return enablePip(lastExitedPiPFrame);
+      }
       console.log("Err finding frame to toggle PiP", err);
-    })
+    });
 }
 
 async function getTargetYTBFrameForPiP() {
   return queryTabs({active: true, lastFocusedWindow: true})
     .then(activeTabs => {
       const activeTab = activeTabs[0];
-      if (activeTab) {
-        if (isYoutubeTab(activeTab)) {
-          return new YTBFrame(0, activeTab);
-        }
-        //TODO: Show UI
+      if (activeTab && isYoutubeTab(activeTab)) {
+        return new YTBFrame(0, activeTab);
       }
+
       throw NO_PLAYING_YTB_FRAME;
     })
     .catch(async _ => {
@@ -104,66 +106,55 @@ async function getTargetYTBFrameForPiP() {
 //https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/playbackRate
 async function increasePlaybackRate() {
   return getPiPHostFrame()
-    .then(async result => {
-      console.log("Increase playback rate", result);
-      if (result.pipTab) {
-        const scriptResult = await executeScript(result.tab, {file: "increase_speed.js", allFrames: false, frameId: frameId});
-        console.log("Try to increase speed PiP", scriptResult);
-        return;
-      }
+    .then(async frame => {
+      console.log("Increase playback rate", frame);
+      const scriptResult = await executeScript(frame.tab, {file: "increase_speed.js", allFrames: false, frameId: frame.frameId});
+      console.log("Try to increase speed PiP", scriptResult);
     });
 }
 
 async function decreasePlaybackRate() {
   return getPiPHostFrame()
-  .then(async result => {
-    console.log("Decrease playback rate", result);
-    if (result.pipTab) {
-      const scriptResult = await executeScript(result.tab, {file: "decrease_speed.js", allFrames: false});
+  .then(async frame => {
+    console.log("Decrease playback rate", frame);
+    const scriptResult = await executeScript(frame.tab, {file: "decrease_speed.js", allFrames: false, frameId: frame.frameId});
       console.log("Try to decrease speed PiP", scriptResult);
       return;
-    }
   });
 }
 
 async function fastForward() {
   return getPiPHostFrame()
-    .then(async result => {
-      console.log("FF", result);
-      if (result.pipTab) {
-        const scriptResult = await executeScript(result.pipTab, {file: "fast_forward.js", allFrames: false});
-        console.log("Try to fast forward PiP", scriptResult);
-        return;
-      }
+    .then(async frame => {
+      console.log("FF", frame);
+      const scriptResult = await executeScript(frame.tab, {file: "fast_forward.js", allFrames: false, frameId: frame.frameId});
+      console.log("Try to fast forward PiP", scriptResult);
     });
 }
 
 async function backward() {
   return getPiPHostFrame()
-    .then(async result => {
-      console.log("BW", result);
-      if (result.pipTab) {
-        const scriptResult = await executeScript(result.pipTab, {file: "backward.js", allFrames: false});
-        console.log("Try to backward PiP", scriptResult);
-        return;
-      }
+    .then(async frame => {
+      console.log("BW", frame);
+      const scriptResult = await executeScript(frame.tab, {file: "backward.js", allFrames: false, frameId: frame.frameId});
+      console.log("Try to backward PiP", scriptResult);
     });
 }
 
 
 async function nextSong() {
   return getActiveFrameForControlling()
-    .then(async tab => {
-      console.log("Next song", tab);
-      await executeScript(tab, {file: "next_song.js", allFrames: false});
+    .then(async frame => {
+      console.log("Next song", frame);
+      await executeScript(frame.tab, {file: "next_song.js", allFrames: false, frameId: frame.frameId});
     });
 }
 
 async function prevSong() {
   return getActiveFrameForControlling()
-    .then(async tab => {
-      console.log("Prev song", tab);
-      await executeScript(tab, {file: "prev_song.js", allFrames: false});
+    .then(async frame => {
+      console.log("Prev song", frame);
+      await executeScript(frame.tab, {file: "prev_song.js", allFrames: false, frameId: frame.frameId});
     });
 }
 
@@ -226,7 +217,17 @@ async function getAudibleYTBFrame() {
   if (!audibleTabs || audibleTabs.length == 0) {
     audibleTabs = await queryTabs({audible: true});
   }
-
+  audibleTabs = audibleTabs.sort((tab1, tab2) => {
+    if (tab1.active ^ tab2.active) {
+      if (tab1.active) {
+        return -1;
+      } else {
+        return 1;
+      }
+    } else {
+      return tab1.id - tab2.id;
+    }
+  });
   for (audibleTab of audibleTabs) {
     if (isYoutubeTab(audibleTab)) {
       return Promise.resolve(new YTBFrame(0, audibleTab));
@@ -253,29 +254,30 @@ async function getAudibleYTBFrame() {
  * If no active PiP,
  * - Check active tab to find a playing player
  * - No active tab, use audible tab: 
+ * 
+ * 
  */
 async function getActiveFrameForControlling() {
   return getPiPHostFrame()
-    .catch(err => {
+    .catch(async err => {
       if (err != NO_ACTIVE_PIP_FRAME) {
         throw err
       }
-      return queryTabs({url: "https://*.youtube.com/*"})
-        .then(tabs => {
-          const audibleTabs = tabs.filter(tab => tab.audible == true);
-          if (audibleTabs.length > 0) {
-            return new YTBFrame(0, audibleTabs[0]);
-          }
-          const activeTabs = tabs.filter(tab => tab.active == true);
-          if (activeTabs.length > 0) {
-            return new YTBFrame(0, activeTabs[0]);
-          }
-          return null;
-        });
+      const tabs = await queryTabs({ url: "https://*.youtube.com/*" });
+      const audibleTabs = tabs.filter(tab => tab.audible == true);
+      if (audibleTabs.length > 0) {
+        return new YTBFrame(0, audibleTabs[0]);
+      }
+      const activeTabs = tabs.filter(tab => tab.active == true);
+      if (activeTabs.length > 0) {
+        return new YTBFrame(0, activeTabs[0]);
+      }
+      return null;
     });
 }
 
 async function enablePip(ytbFrame) {
+  lastExitedPiPFrame = ytbFrame;
   return executeScript(ytbFrame.tab, { file: 'active_pip.js', allFrames: true, frameId: ytbFrame.frameId });
 }
 
