@@ -13,32 +13,32 @@ const NO_PLAYING_YTB_FRAME = "NO_PLAYING_YTB_FRAME";
 chrome.commands.onCommand.addListener(async function(command) {
   console.log('Command:', command);
   switch (command) {
-    case 'toggle-play-pause':
-      await togglePlayPause();
-      break;
-    case 'toggle-pip':
+    case '1_video_toggle_pip':
       await togglePip();
       break;
-    case 'backward':
-      await backward();
+    case '2_focus_tab':
+      await openPiPTab();
       break;
-    case 'fast-forward':
-      await fastForward();
+    case '3_playback_play_pause':
+      await togglePlayPause();
       break;
-    case 'increase-speed':
-      await increasePlaybackRate();
-      break;
-    case 'decrease-speed':
-      await decreasePlaybackRate();
-      break;
-    case 'next':
+    case '4_playback_next':
       await nextSong();
       break;
-    case 'prev':
+    case '5_playback_prev':
       await prevSong();
       break;
-    case 'focus-tab':
-      await openPiPTab();
+    case '6_playback_fast_forward':
+      await fastForward();
+      break;
+    case '7_playback_backward':
+      await backward();
+      break;
+    case '8_playback_increase_speed':
+      await increasePlaybackRate();
+      break;
+    case '9_playback_decrease_speed':
+      await decreasePlaybackRate();
       break;
   }
 });
@@ -165,10 +165,7 @@ async function openPiPTab() {
   return getPiPHostFrame()
     .then(frame => {
       chrome.tabs.highlight({windowId: frame.tab.windowId, tabs: [frame.tab.index]}, window => {
-        console.log("After highlight", window);
-        chrome.windows.update(frame.tab.windowId, {focused: true}, window => {
-          console.log("After focus", window);
-        });
+        chrome.windows.update(frame.tab.windowId, {focused: true});
       });
     })
 }

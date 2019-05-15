@@ -16,34 +16,7 @@
     }
   },
   "commands": {
-    "toggle-play-pause": {
-      "suggested_key": {
-        "windows": "MediaPlayPause",
-        "mac": "MediaPlayPause",
-        "chromeos": "MediaPlayPause",
-        "linux": "MediaPlayPause"
-      },
-      "description": "Video: Play/pause"
-    },
-    "next": {
-      "suggested_key": {
-        "windows": "MediaNextTrack",
-        "mac": "MediaNextTrack",
-        "chromeos": "MediaNextTrack",
-        "linux": "MediaNextTrack"
-      },
-      "description": "Playlist: Next"
-    },
-    "prev": {
-      "suggested_key": {
-        "windows": "MediaPrevTrack",
-        "mac": "MediaPrevTrack",
-        "chromeos": "MediaPrevTrack",
-        "linux": "MediaPrevTrack"
-      },
-      "description": "Playlist: Previous"
-    },
-    "toggle-pip": {
+    "1_video_toggle_pip": {
       "suggested_key": {
         "windows": "Ctrl+Shift+P",
         "mac": "MacCtrl+Shift+P",
@@ -52,20 +25,47 @@
       },
       "description": "Video: Picture-in-Picture"
     },
-    "fast-forward": {
-      "description": "Video: Fast forward"
+    "2_focus_tab": {
+      "description": "Video: Open PiP Tab"
     },
-    "backward": {
-      "description": "Video: Backward"
+    "3_playback_play_pause": {
+      "suggested_key": {
+        "windows": "MediaPlayPause",
+        "mac": "MediaPlayPause",
+        "chromeos": "MediaPlayPause",
+        "linux": "MediaPlayPause"
+      },
+      "description": "Video: Play/pause"
     },
-    "increase-speed": {
-      "description": "Playback speed increase"
+    "4_playback_next": {
+      "suggested_key": {
+        "windows": "MediaNextTrack",
+        "mac": "MediaNextTrack",
+        "chromeos": "MediaNextTrack",
+        "linux": "MediaNextTrack"
+      },
+      "description": "Playlist: Next"
     },
-    "decrease-speed": {
-      "description": "Playback speed decrease"
+    "5_playback_prev": {
+      "suggested_key": {
+        "windows": "MediaPrevTrack",
+        "mac": "MediaPrevTrack",
+        "chromeos": "MediaPrevTrack",
+        "linux": "MediaPrevTrack"
+      },
+      "description": "Playlist: Previous"
     },
-    "focus-tab": {
-      "description": "Video: Switch to PiP Tab"
+    "6_playback_fast_forward": {
+      "description": "Playback: Fast forward"
+    },
+    "7_playback_backward": {
+      "description": "Playback: Backward"
+    },
+    "8_playback_increase_speed": {
+      "description": "Playback: increase speed"
+    },
+    "9_playback_decrease_speed": {
+      "description": "Playback: decrease speed"
     }
   },
   "permissions": [
