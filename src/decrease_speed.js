@@ -1,6 +1,6 @@
 (() => {
     const pipEle = document.pictureInPictureElement;
     if (pipEle && pipEle.playbackRate > 0) {
-        pipEle.playbackRate -= 0.5;
+        pipEle.playbackRate -= 0.25;
     }
 })();

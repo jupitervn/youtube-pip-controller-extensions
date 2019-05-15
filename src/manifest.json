@@ -50,7 +50,7 @@
         "chromeos": "Ctrl+Shift+P",
         "linux": "Ctrl+Shift+P"
       },
-      "description": "Video: PiP"
+      "description": "Video: Picture-in-Picture"
     },
     "fast-forward": {
       "description": "Video: Fast forward"
@@ -63,6 +63,9 @@
     },
     "decrease-speed": {
       "description": "Playback speed decrease"
+    },
+    "focus-tab": {
+      "description": "Video: Switch to PiP Tab"
     }
   },
   "permissions": [

@@ -37,6 +37,9 @@ chrome.commands.onCommand.addListener(async function(command) {
     case 'prev':
       await prevSong();
       break;
+    case 'focus-tab':
+      await openPiPTab();
+      break;
   }
 });
 
@@ -85,7 +88,7 @@ async function togglePip() {
 }
 
 async function getTargetYTBFrameForPiP() {
-  return queryTabs({active: true, lastFocusedWindow: true})
+  return queryTabs({highlighted: true, lastFocusedWindow: true})
     .then(activeTabs => {
       const activeTab = activeTabs[0];
       if (activeTab && isYoutubeTab(activeTab)) {
@@ -158,6 +161,18 @@ async function prevSong() {
     });
 }
 
+async function openPiPTab() {
+  return getPiPHostFrame()
+    .then(frame => {
+      chrome.tabs.highlight({windowId: frame.tab.windowId, tabs: [frame.tab.index]}, window => {
+        console.log("After highlight", window);
+        chrome.windows.update(frame.tab.windowId, {focused: true}, window => {
+          console.log("After focus", window);
+        });
+      });
+    })
+}
+
 /**
  * Get youtube's page picture in picture element
  * OR
@@ -169,7 +184,7 @@ async function getPiPHostFrame() {
       const ytbFrames = tabs
           .filter(tab => isYoutubeTab(tab))
           .map(tab => new YTBFrame(0, tab));
-      const activePiP = await getPiPFrame(ytbFrames);
+      const activePiP = await filterPiPFrame(ytbFrames);
       if (activePiP) {
         return activePiP;
       }
@@ -178,7 +193,7 @@ async function getPiPHostFrame() {
       for (tab of otherTabs) {
         const ytbFrames = await getYTBFramesInTab(tab);
         if (ytbFrames && ytbFrames.length > 0) {
-          const framePiP = await getPiPFrame(ytbFrames);
+          const framePiP = await filterPiPFrame(ytbFrames);
           if (framePiP) {
             return framePiP;
           }
@@ -199,7 +214,7 @@ async function getYTBFramesInTab(tab) {
   });
 }
 
-async function getPiPFrame(ytbFrames) {
+async function filterPiPFrame(ytbFrames) {
   for (ytbFrame of ytbFrames) {
     const pipCheckResult = await executeScript(ytbFrame.tab, {code: "document.pictureInPictureElement", allFrames: false, frameId: ytbFrame.frameId});
     if (pipCheckResult && pipCheckResult[0]) {
@@ -287,7 +302,7 @@ function queryTabs(details) {
       details = {};
     }
     chrome.tabs.query(details, tabs => {
-      console.log("Query Tabs", tabs);
+      console.log("Query Tabs", details, tabs);
       resolve(tabs);
     });
   });
