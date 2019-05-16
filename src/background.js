@@ -1,6 +1,7 @@
-function YTBFrame(frameId, tab) {
+function YTBFrame(frameId, tab, url) {
   this.frameId = frameId;
   this.tab = tab;
+  this.url = url;
 }
 function isYoutubeTab(tab) {
   return tab.url.includes("youtube.com");
@@ -51,10 +52,34 @@ chrome.commands.onCommand.addListener(async function(command) {
  *    Find current active tab => toggle 
  */
 async function togglePlayPause() {
-  return getActiveFrameForControlling()
-    .then(result => {
-      if (result) {
-        return executeScript(result.tab, {file: "toggle_play_pause_video.js", allFrames: false, frameId: result.frameId});
+  return getPiPHostFrame()
+    .then(async result => {
+      await executeScript(result.tab, {file: "toggle_play_pause_video.js", allFrames: false, frameId: result.frameId});
+      return true;
+    })
+    .catch(async err => {
+      const audibleTabs = await getAudibleTabs();
+      var hasVideoToPause = false;
+      for (audibleTab of audibleTabs) {
+        if (isYoutubeTab(audibleTab)) {
+          hasVideoToPause = true
+          await executeScript(audibleTab, {file: "toggle_play_pause_video.js", allFrames: false, frameId: 0});
+        } else {
+          const allPlayingFrames = await getPlayingYTBFramesInTab(audibleTab);
+          console.log("Current playing frames", allPlayingFrames);
+          hasVideoToPause = allPlayingFrames.length > 0;
+          for (playingFrame of allPlayingFrames) {
+            await executeScript(playingFrame.tab, {file: "toggle_play_pause_video.js", allFrames: false, frameId: playingFrame.frameId});
+          }
+        }
+      }
+      return hasVideoToPause;
+    }).then(async alreadyPauseVideo => {
+      console.log("Should play a video", !alreadyPauseVideo);
+      if (!alreadyPauseVideo) {
+        //Try to play the most visible video in active tab
+        const largestFrame = await getLargestYTBFrameInActiveTab();
+        await executeScript(largestFrame.tab, {file: "toggle_play_pause_video.js", allFrames: false, frameId: largestFrame.frameId});
       }
     });
 }
@@ -88,13 +113,18 @@ async function togglePip() {
 }
 
 async function getTargetYTBFrameForPiP() {
-  return queryTabs({highlighted: true, lastFocusedWindow: true})
-    .then(activeTabs => {
+  return queryTabs({active: true, lastFocusedWindow: true})
+    .then(async activeTabs => {
       const activeTab = activeTabs[0];
-      if (activeTab && isYoutubeTab(activeTab)) {
-        return new YTBFrame(0, activeTab);
+      if (activeTab) {
+        if (isYoutubeTab(activeTab)) {
+          return new YTBFrame(0, activeTab);
+        }
+        const playingFrame = (await getPlayingYTBFramesInTab(activeTab, true))[0];
+        if (playingFrame) {
+          return playingFrame;
+        }
       }
-
       throw NO_PLAYING_YTB_FRAME;
     })
     .catch(async _ => {
@@ -109,6 +139,7 @@ async function getTargetYTBFrameForPiP() {
 //https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/playbackRate
 async function increasePlaybackRate() {
   return getPiPHostFrame()
+    .catch(err => getLargestYTBFrameInActiveTab())
     .then(async frame => {
       console.log("Increase playback rate", frame);
       const scriptResult = await executeScript(frame.tab, {file: "increase_speed.js", allFrames: false, frameId: frame.frameId});
@@ -118,6 +149,7 @@ async function increasePlaybackRate() {
 
 async function decreasePlaybackRate() {
   return getPiPHostFrame()
+  .catch(err => getLargestYTBFrameInActiveTab())
   .then(async frame => {
     console.log("Decrease playback rate", frame);
     const scriptResult = await executeScript(frame.tab, {file: "decrease_speed.js", allFrames: false, frameId: frame.frameId});
@@ -128,6 +160,7 @@ async function decreasePlaybackRate() {
 
 async function fastForward() {
   return getPiPHostFrame()
+    .catch(err => getLargestYTBFrameInActiveTab())
     .then(async frame => {
       console.log("FF", frame);
       const scriptResult = await executeScript(frame.tab, {file: "fast_forward.js", allFrames: false, frameId: frame.frameId});
@@ -137,6 +170,7 @@ async function fastForward() {
 
 async function backward() {
   return getPiPHostFrame()
+    .catch(err => getLargestYTBFrameInActiveTab())
     .then(async frame => {
       console.log("BW", frame);
       const scriptResult = await executeScript(frame.tab, {file: "backward.js", allFrames: false, frameId: frame.frameId});
@@ -205,7 +239,7 @@ async function getYTBFramesInTab(tab) {
     chrome.webNavigation.getAllFrames({tabId: tab.id}, iFrames => {
       const ytbIFrames = iFrames
           .filter(frame => frame.url.includes("youtube.com"))
-          .map(frame => new YTBFrame(frame.frameId, tab));
+          .map(frame => new YTBFrame(frame.frameId, tab, frame.url));
       resolve(ytbIFrames);
     });
   });
@@ -221,13 +255,29 @@ async function filterPiPFrame(ytbFrames) {
   return null;
 }
 
-/**
- * Get first playing youtube player frame inside all audible tabs.
- */
-async function getAudibleYTBFrame() {
-  var audibleTabs = await queryTabs({audible: true, lastFocusedWindow: true});
+async function getLargestYTBFrameInActiveTab() {
+  const activeTab = (await queryTabs({highlighted: true, lastFocusedWindow: true}))[0];
+  if (!activeTab) {
+    return Promise.reject(NO_PROPER_FRAME_FOUND);
+  }
+  var allFrames = (await getYTBFramesInTab(activeTab));
+  if (allFrames.length > 0) {
+    const framesRect = (await executeScript(activeTab, {file: "get_frame_visible_rect.js", allFrames: false, frameId: 0}))[0];
+    allFrames = allFrames.sort((f1, f2) => {
+        return framesRect[f2.url] - framesRect[f1.url];
+      });
+    const mostVisibleFrame = allFrames[0];
+    if (mostVisibleFrame && framesRect[mostVisibleFrame.url] > 0) {
+      return Promise.resolve(mostVisibleFrame);
+    }
+  }
+  return Promise.reject(NO_PROPER_FRAME_FOUND);
+}
+
+async function getAudibleTabs() {
+  var audibleTabs = await queryTabs({audible: true, lastFocusedWindow: true, muted: false});
   if (!audibleTabs || audibleTabs.length == 0) {
-    audibleTabs = await queryTabs({audible: true});
+    audibleTabs = await queryTabs({audible: true, muted: false});
   }
   audibleTabs = audibleTabs.sort((tab1, tab2) => {
     if (tab1.active ^ tab2.active) {
@@ -240,20 +290,20 @@ async function getAudibleYTBFrame() {
       return tab1.id - tab2.id;
     }
   });
+  return audibleTabs;
+}
+
+/**
+ * Get first playing youtube player frame inside all audible tabs.
+ */
+async function getAudibleYTBFrame() {
+  const audibleTabs = await getAudibleTabs();
   for (audibleTab of audibleTabs) {
     if (isYoutubeTab(audibleTab)) {
       return Promise.resolve(new YTBFrame(0, audibleTab));
     }
-    const playingFrame = await getYTBFramesInTab(audibleTab)
-      .then(async frames => {
-        for (frame of frames) {
-          const scriptResult = await executeScript(audibleTab, {file: "check_playing_player.js", frameId: frame.frameId});
-          if (scriptResult && scriptResult[0]) {
-            return frame;
-          }
-        }
-        return null;
-      });
+    const playingFrame = (await getPlayingYTBFramesInTab(audibleTab, true))[0];
+    console.log("Found playing frame", playingFrame);
     if (playingFrame) {
       return Promise.resolve(playingFrame);
     }
@@ -261,13 +311,25 @@ async function getAudibleYTBFrame() {
   return Promise.resolve(null);
 }
 
+async function getPlayingYTBFramesInTab(tab, isEarlyStop) {
+  const frames = await getYTBFramesInTab(tab);
+  const playingFrames = [];
+  for (frame of frames) {
+    const scriptResult = await executeScript(tab, {file: "check_playing_player.js", frameId: frame.frameId});
+    if (scriptResult && scriptResult[0]) {
+      if (isEarlyStop) {
+        return [frame];
+      }
+      playingFrames.push(frame);
+    }
+  }
+  return playingFrames;
+} 
+
 /**
  * First get the active PiP
- * If no active PiP,
- * - Check active tab to find a playing player
- * - No active tab, use audible tab: 
- * 
- * 
+ * - No Active PiP
+ * => Find Audible tabs, If there's audible tabs => pause videos inside that.
  */
 async function getActiveFrameForControlling() {
   return getPiPHostFrame()
@@ -275,6 +337,7 @@ async function getActiveFrameForControlling() {
       if (err != NO_ACTIVE_PIP_FRAME) {
         throw err
       }
+      
       const tabs = await queryTabs({ url: "https://*.youtube.com/*" });
       const audibleTabs = tabs.filter(tab => tab.audible == true);
       if (audibleTabs.length > 0) {

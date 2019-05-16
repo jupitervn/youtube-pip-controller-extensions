@@ -8,6 +8,7 @@
         }
         return true
     }
+
     const playingVideos = Array.from(document.querySelectorAll('video'))
         .filter(video => video.readyState != 0)
         .filter(video => video.paused == false);
@@ -18,18 +19,21 @@
         return true;
     }
 
-    const pausingVideos = Array.from(document.querySelectorAll('video'))
-        .filter(video => video.readyState != 0)
+    const stoppedVideos = Array.from(document.querySelectorAll('video'))
         .filter(video => video.paused == true)
         .sort((v1, v2) => {
             const v1Rect = v1.getClientRects()[0];
             const v2Rect = v1.getClientRects()[0];
             return ((v2Rect.width * v2Rect.height) - (v1Rect.width * v1Rect.height));
           });
-    if (pausingVideos.length === 0) {
-        return false
+    if (stoppedVideos.length == 0) {
+        return false;
     }
-    const video = pausingVideos[0];
-    await video.play();
+    const video = stoppedVideos[0];
+    if (video.readyState == 0) {
+        document.querySelector("button.ytp-large-play-button").click();
+    } else {
+        await video.play();
+    }
     return true;
 })();

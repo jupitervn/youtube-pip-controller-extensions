@@ -15,8 +15,8 @@
     });
 
   if (videos.length === 0)
-    return;
+    return null;
 
   const video = videos[0];
-  await video.requestPictureInPicture();
+  return await video.requestPictureInPicture();
 })();
