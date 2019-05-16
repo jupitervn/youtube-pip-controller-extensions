@@ -260,6 +260,9 @@ async function getLargestYTBFrameInActiveTab() {
   if (!activeTab) {
     return Promise.reject(NO_PROPER_FRAME_FOUND);
   }
+  if (isYoutubeTab(activeTab)) {
+    return Promise.resolve(new YTBFrame(0, activeTab));
+  }
   var allFrames = (await getYTBFramesInTab(activeTab));
   if (allFrames.length > 0) {
     const framesRect = (await executeScript(activeTab, {file: "get_frame_visible_rect.js", allFrames: false, frameId: 0}))[0];
