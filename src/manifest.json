@@ -1,7 +1,7 @@
 {
   "name": "Youtube PiP Controller",
   "description": "Easier to control your Youtube player when in Picture in Picture mode",
-  "version": "1.0",
+  "version": "1.1",
   "icons": {
     "128": "icons/icon_128.png"
   },
