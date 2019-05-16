@@ -1,6 +1,9 @@
 # youtube-pip-controller-extensions
-If you ever coding or reading books while playing your favorite video playlist in **picture-in-picture** mode. This simple chrome extension is written to solve that problem.
-
+If you ever coding, reading books or websurfing while playing your favorite video playlist in **picture-in-picture** mode. This simple extension will help you to control that PiP window without touching your mouse.
+## Features
+- Control PiP Youtube window: play/pause, fast forward, backward, increase/decrease speed, next/previous song.
+- Control Youtube embedded videos inside other websites.
+- DEMO: https://youtu.be/8uv_l7If6TY
 ## How to enable PiP mode in Chrome
 - https://9to5google.com/2018/10/19/chrome-picture-in-picture-video/
 ## How to config shortcut
@@ -14,7 +17,7 @@ If you ever coding or reading books while playing your favorite video playlist i
     - Fast forward: `Not set`
     - Backward: `Not set`
 - Change scope of your shortcut to `Global` to control PiP video while using other app
-- Go to [chrome://extensions/configureCommands]
+- Go to [chrome://extensions/configureCommands](chrome://extensions/configureCommands)
 - See below for avaible commands:
  ![app_ss](/assets/app_ss.png)
 ## Notes:
