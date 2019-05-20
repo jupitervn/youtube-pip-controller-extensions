@@ -1,6 +1,6 @@
 # youtube-pip-controller-extensions
 If you ever coding, reading books or websurfing while playing your favorite video playlist in **picture-in-picture** mode. This simple extension will help you to control that PiP window without touching your mouse.
-## Chrome extension :rocket:
+## Publish :rocket:
  https://chrome.google.com/webstore/detail/youtube-pip-controller/enhjfneembhghpcfanndnnkfadhijjfk
 
 ## Features
