@@ -1,5 +1,8 @@
 # youtube-pip-controller-extensions
 If you ever coding, reading books or websurfing while playing your favorite video playlist in **picture-in-picture** mode. This simple extension will help you to control that PiP window without touching your mouse.
+## Chrome extension :rocket:
+ https://chrome.google.com/webstore/detail/youtube-pip-controller/enhjfneembhghpcfanndnnkfadhijjfk
+
 ## Features
 - Control PiP Youtube window: play/pause, fast forward, backward, increase/decrease speed, next/previous song.
 - Control Youtube embedded videos inside other websites.
